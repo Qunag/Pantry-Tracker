@@ -13,9 +13,21 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+const { runManually } = require("./jobs/expiry.cron");
+
 // --- Routes ---
 app.use("/api/auth", authRoutes);
 app.use("/api/foods", foodRoutes);
+
+// --- Dev: trigger cron thủ công ---
+app.get("/api/test/cron", async (req, res, next) => {
+  try {
+    await runManually();
+    res.json({ success: true, message: "Cron job executed. Check console for email preview link." });
+  } catch (err) {
+    next(err);
+  }
+});
 
 // --- Health check ---
 app.get("/", (req, res) => {
