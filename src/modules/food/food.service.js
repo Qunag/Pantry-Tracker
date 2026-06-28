@@ -13,27 +13,46 @@ const calcStatus = (expiryDate) => {
   return { status: "safe", daysLeft };
 };
 
-// Thêm status vào food object
-const formatFood = (food) => ({
-  ...food,
-  ...calcStatus(food.expiryDate),
-});
+const formatFood = (food) => ({ ...food, ...calcStatus(food.expiryDate) });
 
-// --- GET ALL FOODS ---
-const getFoods = async (userId, statusFilter) => {
+// --- GET ALL FOODS (với pagination + search + status filter) ---
+const getFoods = async (userId, { status, search, page = 1, limit = 10 }) => {
+  const skip = (page - 1) * limit;
+
+  // Build where clause
+  const where = {
+    userId,
+    ...(search && {
+      name: { contains: search, mode: "insensitive" }, // case-insensitive search
+    }),
+  };
+
+  // Lấy total count cho pagination
+  const total = await prisma.food.count({ where });
+
   const foods = await prisma.food.findMany({
-    where: { userId },
-    orderBy: { expiryDate: "asc" }, // sắp xếp gần hết hạn lên đầu
+    where,
+    orderBy: { expiryDate: "asc" },
+    skip,
+    take: limit,
   });
 
-  const formatted = foods.map(formatFood);
+  let formatted = foods.map(formatFood);
 
-  // Filter theo status nếu có query ?status=expired|warning|safe
-  if (statusFilter) {
-    return formatted.filter((f) => f.status === statusFilter);
+  // Filter theo status (sau khi tính status từ date)
+  if (status) {
+    formatted = formatted.filter((f) => f.status === status);
   }
 
-  return formatted;
+  return {
+    data: formatted,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
 };
 
 // --- CREATE FOOD ---
@@ -46,7 +65,6 @@ const createFood = async (userId, data) => {
 
 // --- UPDATE FOOD ---
 const updateFood = async (userId, foodId, data) => {
-  // Kiểm tra food thuộc về user này
   const existing = await prisma.food.findFirst({
     where: { id: foodId, userId },
   });
@@ -57,11 +75,7 @@ const updateFood = async (userId, foodId, data) => {
     throw error;
   }
 
-  const food = await prisma.food.update({
-    where: { id: foodId },
-    data,
-  });
-
+  const food = await prisma.food.update({ where: { id: foodId }, data });
   return formatFood(food);
 };
 

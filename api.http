@@ -1,40 +1,53 @@
-### Health Check
+### ===================================================
+### 🍎 Food Expiry Tracker — API Test Suite
+### Dùng REST Client extension (VS Code) để chạy
+### Hướng dẫn: Click "Send Request" trên từng request
+### ===================================================
+
+### ===== HEALTH CHECK =====
+
+### 1. Health Check
 GET http://localhost:3000/
 
 ###
 
-### ===== AUTH =====
+### ===== AUTH MODULE =====
 
-### Register
+### 2. Register — tạo tài khoản mới
+# @name register
 POST http://localhost:3000/api/auth/register
 Content-Type: application/json
 
 {
   "name": "Quang",
-  "email": "quang@test.com",
+  "email": "quang2@test.com",
   "password": "123456"
 }
 
 ###
 
-### Login
+### 3. Login — đăng nhập và lấy token
+# @name login
 POST http://localhost:3000/api/auth/login
 Content-Type: application/json
 
 {
-  "email": "quang@test.com",
+  "email": "quang2@test.com",
   "password": "123456"
 }
 
 ###
 
-### Get Me (thay <TOKEN> bằng accessToken từ Login)
+### Lưu token từ login response
+@token = {{login.response.body.accessToken}}
+
+### 4. Get Me — xem thông tin user (protected)
 GET http://localhost:3000/api/auth/me
-Authorization: Bearer <TOKEN>
+Authorization: Bearer {{token}}
 
 ###
 
-### Test validation error (password quá ngắn)
+### 5. Register — validation error (password < 6 ký tự)
 POST http://localhost:3000/api/auth/register
 Content-Type: application/json
 
@@ -46,50 +59,74 @@ Content-Type: application/json
 
 ###
 
-### Test 401 (không có token)
+### 6. Register — email đã tồn tại (409)
+POST http://localhost:3000/api/auth/register
+Content-Type: application/json
+
+{
+  "name": "Quang",
+  "email": "quang2@test.com",
+  "password": "123456"
+}
+
+###
+
+### 7. Login — sai password (401)
+POST http://localhost:3000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "quang2@test.com",
+  "password": "wrong_password"
+}
+
+###
+
+### 8. Get Me — không có token (401)
 GET http://localhost:3000/api/auth/me
 
 ###
 
-### Test 403 (token sai)
+### 9. Get Me — token sai (403)
 GET http://localhost:3000/api/auth/me
 Authorization: Bearer invalid.token.here
 
 ###
 
-### ===== FOOD =====
-# Lấy token từ Login rồi thay vào @token bên dưới
-@token = <PASTE_TOKEN_HERE>
+### ===== FOOD MODULE =====
 
-### Thêm food mới
+### 10. Thêm food — an toàn (safe, >3 ngày)
+# @name createSafe
 POST http://localhost:3000/api/foods
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "name": "Sữa tươi",
+  "name": "Sữa tươi TH",
   "quantity": 2,
   "unit": "hộp",
-  "expiryDate": "2026-07-01"
+  "expiryDate": "2026-08-15"
 }
 
 ###
 
-### Thêm food sắp hết hạn (warning)
+### 11. Thêm food — sắp hết hạn (warning, <=3 ngày)
+# @name createWarning
 POST http://localhost:3000/api/foods
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "name": "Bánh mì",
+  "name": "Bánh mì sandwich",
   "quantity": 1,
   "unit": "ổ",
-  "expiryDate": "2026-06-29"
+  "expiryDate": "2026-06-30"
 }
 
 ###
 
-### Thêm food đã hết hạn (expired)
+### 12. Thêm food — đã hết hạn (expired)
+# @name createExpired
 POST http://localhost:3000/api/foods
 Content-Type: application/json
 Authorization: Bearer {{token}}
@@ -103,43 +140,115 @@ Authorization: Bearer {{token}}
 
 ###
 
-### Lấy tất cả foods
+### 13. Thêm food — có barcode + image
+POST http://localhost:3000/api/foods
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "Mì Hảo Hảo",
+  "barcode": "8934563118037",
+  "quantity": 5,
+  "unit": "gói",
+  "expiryDate": "2026-12-31",
+  "imageUrl": "https://example.com/haohao.jpg"
+}
+
+###
+
+### 14. Thêm food — validation error (thiếu name)
+POST http://localhost:3000/api/foods
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "quantity": 1,
+  "expiryDate": "2026-12-31"
+}
+
+###
+
+### 15. Lấy tất cả foods (sorted theo expiryDate)
 GET http://localhost:3000/api/foods
 Authorization: Bearer {{token}}
 
 ###
 
-### Lấy foods theo status
-GET http://localhost:3000/api/foods?status=expired
+### 16. Filter — chỉ lấy foods an toàn
+GET http://localhost:3000/api/foods?status=safe
 Authorization: Bearer {{token}}
 
 ###
 
-### GET http://localhost:3000/api/foods?status=warning
+### 17. Filter — chỉ lấy foods sắp hết hạn
 GET http://localhost:3000/api/foods?status=warning
 Authorization: Bearer {{token}}
 
 ###
 
-### Stats
+### 18. Filter — chỉ lấy foods đã hết hạn
+GET http://localhost:3000/api/foods?status=expired
+Authorization: Bearer {{token}}
+
+###
+
+### 19. Stats — thống kê tổng quan
 GET http://localhost:3000/api/foods/stats
 Authorization: Bearer {{token}}
 
 ###
 
-### Cập nhật food (thay <FOOD_ID> bằng id từ response)
-PUT http://localhost:3000/api/foods/<FOOD_ID>
+### 20. Cập nhật food (thay ID từ response #10)
+@safeFoodId = {{createSafe.response.body.data.id}}
+PUT http://localhost:3000/api/foods/{{safeFoodId}}
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "quantity": 3,
-  "expiryDate": "2026-08-01"
+  "quantity": 5,
+  "expiryDate": "2026-09-01"
 }
 
 ###
 
-### Xóa food
-DELETE http://localhost:3000/api/foods/<FOOD_ID>
+### 21. Cập nhật food — không tồn tại (404)
+PUT http://localhost:3000/api/foods/00000000-0000-0000-0000-000000000000
+Content-Type: application/json
 Authorization: Bearer {{token}}
 
+{
+  "quantity": 99
+}
+
+###
+
+### 22. Xóa food đã hết hạn
+@expiredFoodId = {{createExpired.response.body.data.id}}
+DELETE http://localhost:3000/api/foods/{{expiredFoodId}}
+Authorization: Bearer {{token}}
+
+###
+
+### 23. Xóa food — không tồn tại (404)
+DELETE http://localhost:3000/api/foods/00000000-0000-0000-0000-000000000000
+Authorization: Bearer {{token}}
+
+###
+
+### ===== CRON JOB + EMAIL =====
+
+### 24. Trigger cron thủ công — gửi email cảnh báo
+### Kiểm tra console server để thấy link preview Ethereal
+GET http://localhost:3000/api/test/cron
+
+###
+
+### ===== ERROR HANDLING =====
+
+### 25. Route không tồn tại (404)
+GET http://localhost:3000/api/nonexistent
+
+###
+
+### 26. Food API — không có token (401)
+GET http://localhost:3000/api/foods

@@ -17,12 +17,22 @@ const foodSchema = z.object({
 
 const updateFoodSchema = foodSchema.partial(); // tất cả field đều optional khi update
 
-// GET /api/foods?status=safe|warning|expired
+// GET /api/foods?status=safe|warning|expired&search=sữa&page=1&limit=10
 const getFoods = async (req, res, next) => {
   try {
-    const { status } = req.query;
-    const foods = await foodService.getFoods(req.user.id, status);
-    res.status(200).json({ success: true, count: foods.length, data: foods });
+    const { status, search, page, limit } = req.query;
+    const result = await foodService.getFoods(req.user.id, {
+      status,
+      search,
+      page: page ? parseInt(page) : 1,
+      limit: limit ? parseInt(limit) : 10,
+    });
+    res.status(200).json({
+      success: true,
+      count: result.data.length,
+      pagination: result.pagination,
+      data: result.data,
+    });
   } catch (err) {
     next(err);
   }
