@@ -15,7 +15,11 @@ const { runManually } = require("./jobs/expiry.cron");
 const app = express();
 
 // --- Security ---
-app.use(helmet()); // Set secure HTTP headers
+app.use(helmet());
+app.use(cors({
+  origin: ["http://localhost:3001", "http://localhost:3000"],
+  credentials: true,
+}));
 
 // Rate limiting — 100 requests / 15 phút cho tất cả routes
 const globalLimiter = rateLimit({
