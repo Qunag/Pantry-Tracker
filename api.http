@@ -1,0 +1,145 @@
+### Health Check
+GET http://localhost:3000/
+
+###
+
+### ===== AUTH =====
+
+### Register
+POST http://localhost:3000/api/auth/register
+Content-Type: application/json
+
+{
+  "name": "Quang",
+  "email": "quang@test.com",
+  "password": "123456"
+}
+
+###
+
+### Login
+POST http://localhost:3000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "quang@test.com",
+  "password": "123456"
+}
+
+###
+
+### Get Me (thay <TOKEN> bằng accessToken từ Login)
+GET http://localhost:3000/api/auth/me
+Authorization: Bearer <TOKEN>
+
+###
+
+### Test validation error (password quá ngắn)
+POST http://localhost:3000/api/auth/register
+Content-Type: application/json
+
+{
+  "name": "Test",
+  "email": "test@test.com",
+  "password": "123"
+}
+
+###
+
+### Test 401 (không có token)
+GET http://localhost:3000/api/auth/me
+
+###
+
+### Test 403 (token sai)
+GET http://localhost:3000/api/auth/me
+Authorization: Bearer invalid.token.here
+
+###
+
+### ===== FOOD =====
+# Lấy token từ Login rồi thay vào @token bên dưới
+@token = <PASTE_TOKEN_HERE>
+
+### Thêm food mới
+POST http://localhost:3000/api/foods
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "Sữa tươi",
+  "quantity": 2,
+  "unit": "hộp",
+  "expiryDate": "2026-07-01"
+}
+
+###
+
+### Thêm food sắp hết hạn (warning)
+POST http://localhost:3000/api/foods
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "Bánh mì",
+  "quantity": 1,
+  "unit": "ổ",
+  "expiryDate": "2026-06-29"
+}
+
+###
+
+### Thêm food đã hết hạn (expired)
+POST http://localhost:3000/api/foods
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "name": "Phô mai cũ",
+  "quantity": 1,
+  "unit": "miếng",
+  "expiryDate": "2026-06-01"
+}
+
+###
+
+### Lấy tất cả foods
+GET http://localhost:3000/api/foods
+Authorization: Bearer {{token}}
+
+###
+
+### Lấy foods theo status
+GET http://localhost:3000/api/foods?status=expired
+Authorization: Bearer {{token}}
+
+###
+
+### GET http://localhost:3000/api/foods?status=warning
+GET http://localhost:3000/api/foods?status=warning
+Authorization: Bearer {{token}}
+
+###
+
+### Stats
+GET http://localhost:3000/api/foods/stats
+Authorization: Bearer {{token}}
+
+###
+
+### Cập nhật food (thay <FOOD_ID> bằng id từ response)
+PUT http://localhost:3000/api/foods/<FOOD_ID>
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "quantity": 3,
+  "expiryDate": "2026-08-01"
+}
+
+###
+
+### Xóa food
+DELETE http://localhost:3000/api/foods/<FOOD_ID>
+Authorization: Bearer {{token}}
+
