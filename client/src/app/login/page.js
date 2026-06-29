@@ -52,7 +52,8 @@ export default function LoginPage() {
               placeholder="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="input-dark pl-10"
+              className="input-dark"
+              style={{ paddingLeft: '2.5rem' }}
               required
             />
           </div>
@@ -63,7 +64,8 @@ export default function LoginPage() {
               placeholder="Mật khẩu"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="input-dark pl-10"
+              className="input-dark"
+              style={{ paddingLeft: '2.5rem' }}
               required
             />
           </div>

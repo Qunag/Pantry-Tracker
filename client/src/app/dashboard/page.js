@@ -91,7 +91,7 @@ export default function DashboardPage() {
         {/* Greeting */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold">
-            Xin chào, <span className="gradient-text">{user.name}</span> 👋
+            Xin chào, <span className="gradient-text">{user.name}</span> 
           </h1>
           <p className="text-white/50 mt-1">Theo dõi thực phẩm của bạn để tránh lãng phí</p>
         </div>

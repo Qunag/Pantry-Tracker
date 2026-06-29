@@ -40,18 +40,23 @@ body {
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
 
 /* Input dark style */
-.input-dark {
-  background: rgba(255,255,255,0.07);
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 10px;
-  color: #fff;
-  padding: 10px 14px;
-  width: 100%;
-  outline: none;
-  transition: border-color 0.2s;
+@layer components {
+  .input-dark {
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px;
+    color: #fff;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    padding-right: 14px;
+    padding-left: 14px;
+    width: 100%;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .input-dark:focus { border-color: #6366f1; }
+  .input-dark::placeholder { color: rgba(255,255,255,0.35); }
 }
-.input-dark:focus { border-color: #6366f1; }
-.input-dark::placeholder { color: rgba(255,255,255,0.35); }
 
 /* Animations */
 @keyframes fadeIn {

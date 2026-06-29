@@ -48,17 +48,17 @@ export default function RegisterPage() {
           <div className="relative">
             <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
             <input name="name" type="text" placeholder="Họ và tên" value={form.name}
-              onChange={handleChange} className="input-dark pl-10" required minLength={2} />
+              onChange={handleChange} className="input-dark" style={{ paddingLeft: '2.5rem' }} required minLength={2} />
           </div>
           <div className="relative">
             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
             <input name="email" type="email" placeholder="Email" value={form.email}
-              onChange={handleChange} className="input-dark pl-10" required />
+              onChange={handleChange} className="input-dark" style={{ paddingLeft: '2.5rem' }} required />
           </div>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
             <input name="password" type="password" placeholder="Mật khẩu (ít nhất 6 ký tự)" value={form.password}
-              onChange={handleChange} className="input-dark pl-10" required />
+              onChange={handleChange} className="input-dark" style={{ paddingLeft: '2.5rem' }} required />
           </div>
 
           <button type="submit" disabled={loading}
