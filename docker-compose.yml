@@ -1,0 +1,61 @@
+services:
+  # ── 1. PostgreSQL Database ──────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: food_expiry_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
+      POSTGRES_DB: ${POSTGRES_DB:-food_expiry_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── 2. Backend (Express + Prisma) ──────────────────────
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: food_server
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres123}@postgres:5432/${POSTGRES_DB:-food_expiry_db}?schema=public
+      JWT_SECRET: ${JWT_SECRET:-food-expiry-tracker-jwt-secret-2024}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      EMAIL_FROM: ${EMAIL_FROM:-Food Expiry Tracker <noreply@foodtracker.com>}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Chạy migrate rồi mới start server
+    command: sh -c "npx prisma migrate deploy && npm run start"
+
+  # ── 3. Frontend (Next.js) ──────────────────────────────
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000}
+    container_name: food_client
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+    depends_on:
+      - server
+
+volumes:
+  postgres_data:
