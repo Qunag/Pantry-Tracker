@@ -38,7 +38,6 @@ const authLimiter = rateLimit({
 app.use(globalLimiter);
 
 // --- Global Middleware ---
-app.use(cors());
 app.use(express.json());
 
 // --- Swagger UI ---

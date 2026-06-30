@@ -9,18 +9,27 @@ import StatsCards from "@/components/dashboard/StatsCards";
 import FoodCard from "@/components/food/FoodCard";
 import FoodFilter from "@/components/food/FoodFilter";
 import FoodModal from "@/components/food/FoodModal";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { Plus, PackageOpen } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const { foods, stats, pagination, loading, fetchFoods, fetchStats, createFood, updateFood, deleteFood } = useFoods();
+  const {
+    foods, stats, pagination, loading,
+    saving, deleting,
+    fetchFoods, fetchStats, createFood, updateFood, deleteFood,
+  } = useFoods();
 
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingFood, setEditingFood] = useState(null);
+
+  // State cho ConfirmDialog xóa
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   // Redirect nếu chưa login
   useEffect(() => {
@@ -62,14 +71,28 @@ export default function DashboardPage() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm("Bạn chắc chắn muốn xóa thực phẩm này?")) return;
+  // Bước 1: Mở ConfirmDialog thay vì window.confirm()
+  const handleDeleteRequest = (id) => {
+    setDeletingId(id);
+    setConfirmOpen(true);
+  };
+
+  // Bước 2: Người dùng xác nhận → thực hiện xóa
+  const handleDeleteConfirm = async () => {
     try {
-      await deleteFood(id);
+      await deleteFood(deletingId);
       refresh();
     } catch {
       toast.error("Không thể xóa");
+    } finally {
+      setConfirmOpen(false);
+      setDeletingId(null);
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setConfirmOpen(false);
+    setDeletingId(null);
   };
 
   const openAdd = () => { setEditingFood(null); setModalOpen(true); };
@@ -128,7 +151,13 @@ export default function DashboardPage() {
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {foods.map((food) => (
-                <FoodCard key={food.id} food={food} onEdit={openEdit} onDelete={handleDelete} />
+                <FoodCard
+                  key={food.id}
+                  food={food}
+                  onEdit={openEdit}
+                  onDelete={handleDeleteRequest}
+                  isDeleting={deleting && deletingId === food.id}
+                />
               ))}
             </div>
 
@@ -161,18 +190,32 @@ export default function DashboardPage() {
       {/* FAB — Floating Action Button */}
       <button
         onClick={openAdd}
-        className="fixed bottom-8 right-8 w-14 h-14 rounded-2xl flex items-center justify-center shadow-2xl cursor-pointer hover:scale-110 active:scale-95 transition-transform duration-200"
+        disabled={saving}
+        className="fixed bottom-8 right-8 w-14 h-14 rounded-2xl flex items-center justify-center shadow-2xl cursor-pointer hover:scale-110 active:scale-95 transition-transform duration-200 disabled:opacity-70 disabled:cursor-not-allowed"
         style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)", boxShadow: "0 8px 32px rgba(99,102,241,0.4)" }}
       >
         <Plus className="w-6 h-6 text-white" />
       </button>
 
-      {/* Modal */}
+      {/* Modal thêm / sửa */}
       <FoodModal
         isOpen={modalOpen}
         food={editingFood}
         onClose={() => setModalOpen(false)}
         onSave={handleSave}
+      />
+
+      {/* ConfirmDialog xóa */}
+      <ConfirmDialog
+        isOpen={confirmOpen}
+        title="Xóa thực phẩm"
+        message="Bạn có chắc chắn muốn xóa thực phẩm này? Hành động này không thể hoàn tác."
+        confirmText="Xóa"
+        cancelText="Giữ lại"
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+        loading={deleting}
+        variant="danger"
       />
     </div>
   );

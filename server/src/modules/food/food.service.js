@@ -15,19 +15,42 @@ const calcStatus = (expiryDate) => {
 
 const formatFood = (food) => ({ ...food, ...calcStatus(food.expiryDate) });
 
-// --- GET ALL FOODS (với pagination + search + status filter) ---
+// Helper: tính ngưỡng ngày để filter status ngay trong DB query
+const getStatusDateBounds = (status) => {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // bắt đầu ngày hôm nay (00:00:00)
+  const in3Days = new Date(today);
+  in3Days.setDate(in3Days.getDate() + 3);
+
+  if (status === "expired") {
+    // expiryDate < today (đã hết hạn)
+    return { expiryDate: { lt: today } };
+  }
+  if (status === "warning") {
+    // today <= expiryDate <= today+3 (sắp hết hạn)
+    return { expiryDate: { gte: today, lte: in3Days } };
+  }
+  if (status === "safe") {
+    // expiryDate > today+3 (còn an toàn)
+    return { expiryDate: { gt: in3Days } };
+  }
+  return {};
+};
+
+// --- GET ALL FOODS (với pagination + search + status filter trong DB) ---
 const getFoods = async (userId, { status, search, page = 1, limit = 10 }) => {
   const skip = (page - 1) * limit;
 
-  // Build where clause
+  // Build where clause — status filter được thực hiện ngay trong DB query
   const where = {
     userId,
     ...(search && {
       name: { contains: search, mode: "insensitive" }, // case-insensitive search
     }),
+    ...(status && getStatusDateBounds(status)),
   };
 
-  // Lấy total count cho pagination
+  // Lấy total count cho pagination (đã tính đúng sau khi filter status)
   const total = await prisma.food.count({ where });
 
   const foods = await prisma.food.findMany({
@@ -37,12 +60,7 @@ const getFoods = async (userId, { status, search, page = 1, limit = 10 }) => {
     take: limit,
   });
 
-  let formatted = foods.map(formatFood);
-
-  // Filter theo status (sau khi tính status từ date)
-  if (status) {
-    formatted = formatted.filter((f) => f.status === status);
-  }
+  const formatted = foods.map(formatFood);
 
   return {
     data: formatted,
@@ -95,17 +113,22 @@ const deleteFood = async (userId, foodId) => {
   return { message: "Food deleted successfully" };
 };
 
-// --- STATS ---
+// --- STATS — dùng DB aggregation (groupBy date bounds) thay vì load all ---
 const getStats = async (userId) => {
-  const foods = await prisma.food.findMany({ where: { userId } });
-  const formatted = foods.map(formatFood);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const in3Days = new Date(today);
+  in3Days.setDate(in3Days.getDate() + 3);
 
-  return {
-    total: formatted.length,
-    safe: formatted.filter((f) => f.status === "safe").length,
-    warning: formatted.filter((f) => f.status === "warning").length,
-    expired: formatted.filter((f) => f.status === "expired").length,
-  };
+  // Chạy song song 4 query COUNT thay vì load toàn bộ records
+  const [total, expired, warning, safe] = await Promise.all([
+    prisma.food.count({ where: { userId } }),
+    prisma.food.count({ where: { userId, expiryDate: { lt: today } } }),
+    prisma.food.count({ where: { userId, expiryDate: { gte: today, lte: in3Days } } }),
+    prisma.food.count({ where: { userId, expiryDate: { gt: in3Days } } }),
+  ]);
+
+  return { total, expired, warning, safe };
 };
 
 module.exports = { getFoods, createFood, updateFood, deleteFood, getStats };

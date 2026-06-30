@@ -8,7 +8,7 @@ const STATUS_CONFIG = {
   expired: { label: "Hết hạn",   borderColor: "#ef4444", badgeClass: "badge-expired" },
 };
 
-export default function FoodCard({ food, onEdit, onDelete }) {
+export default function FoodCard({ food, onEdit, onDelete, isDeleting }) {
   const cfg = STATUS_CONFIG[food.status] || STATUS_CONFIG.safe;
 
   const formatDate = (d) =>
@@ -64,15 +64,22 @@ export default function FoodCard({ food, onEdit, onDelete }) {
       <div className="flex gap-2 pt-1">
         <button
           onClick={() => onEdit(food)}
-          className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs text-white/60 hover:text-indigo-400 hover:bg-indigo-500/10 transition-all duration-200 cursor-pointer"
+          disabled={isDeleting}
+          className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs text-white/60 hover:text-indigo-400 hover:bg-indigo-500/10 transition-all duration-200 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <Pencil className="w-3.5 h-3.5" /> Sửa
         </button>
         <button
           onClick={() => onDelete(food.id)}
-          className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs text-white/60 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200 cursor-pointer"
+          disabled={isDeleting}
+          className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs text-white/60 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          <Trash2 className="w-3.5 h-3.5" /> Xóa
+          {isDeleting ? (
+            <div className="w-3.5 h-3.5 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <Trash2 className="w-3.5 h-3.5" />
+          )}
+          Xóa
         </button>
       </div>
     </div>
