@@ -6,12 +6,14 @@ import { useAuth } from "@/context/AuthContext";
 import { useFoods } from "@/hooks/useFoods";
 import Navbar from "@/components/ui/Navbar";
 import StatsCards from "@/components/dashboard/StatsCards";
+import CategoryChart from "@/components/dashboard/CategoryChart";
 import FoodCard from "@/components/food/FoodCard";
 import FoodFilter from "@/components/food/FoodFilter";
 import FoodModal from "@/components/food/FoodModal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { Plus, PackageOpen } from "lucide-react";
 import toast from "react-hot-toast";
+import api from "@/lib/api";
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
@@ -22,40 +24,63 @@ export default function DashboardPage() {
     fetchFoods, fetchStats, createFood, updateFood, deleteFood,
   } = useFoods();
 
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("");
-  const [modalOpen, setModalOpen] = useState(false);
+  const [search, setSearch]     = useState("");
+  const [status, setStatus]     = useState("");
+  const [category, setCategory] = useState("");
+  const [sort, setSort]         = useState("expiryDate:asc");
+
+  const [modalOpen, setModalOpen]   = useState(false);
   const [editingFood, setEditingFood] = useState(null);
 
-  // State cho ConfirmDialog xóa
+  // ConfirmDialog state
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [deletingId, setDeletingId] = useState(null);
+  const [deletingId, setDeletingId]   = useState(null);
+
+  // CategoryChart data
+  const [categoryStats, setCategoryStats] = useState([]);
 
   // Redirect nếu chưa login
   useEffect(() => {
     if (!authLoading && !user) router.replace("/login");
   }, [user, authLoading, router]);
 
-  // Load dữ liệu ban đầu
+  // Parse sort string thành sortBy + sortOrder
+  const parsedSort = useCallback(() => {
+    const [sortBy, sortOrder] = sort.split(":");
+    return { sortBy, sortOrder };
+  }, [sort]);
+
+  // Load dữ liệu ban đầu + khi filter thay đổi
   useEffect(() => {
-    if (user) {
-      fetchFoods({ status, search });
-      fetchStats();
-    }
-  }, [user, status, fetchFoods, fetchStats]);
+    if (!user) return;
+    const { sortBy, sortOrder } = parsedSort();
+    fetchFoods({ status, search, category, sortBy, sortOrder });
+    fetchStats();
+  }, [user, status, category, sort, fetchFoods, fetchStats, parsedSort]);
 
   // Debounce search 400ms
   useEffect(() => {
     const t = setTimeout(() => {
-      if (user) fetchFoods({ status, search });
+      if (!user) return;
+      const { sortBy, sortOrder } = parsedSort();
+      fetchFoods({ status, search, category, sortBy, sortOrder });
     }, 400);
     return () => clearTimeout(t);
   }, [search]);
 
+  // Fetch category stats cho chart
+  useEffect(() => {
+    if (!user) return;
+    api.get("/api/foods/stats/category")
+      .then((r) => setCategoryStats(r.data.data || []))
+      .catch(() => {});
+  }, [user, foods]); // re-fetch khi danh sách thay đổi
+
   const refresh = useCallback(() => {
-    fetchFoods({ status, search });
+    const { sortBy, sortOrder } = parsedSort();
+    fetchFoods({ status, search, category, sortBy, sortOrder });
     fetchStats();
-  }, [status, search, fetchFoods, fetchStats]);
+  }, [status, search, category, sort, fetchFoods, fetchStats, parsedSort]);
 
   const handleSave = async (formData) => {
     try {
@@ -71,13 +96,11 @@ export default function DashboardPage() {
     }
   };
 
-  // Bước 1: Mở ConfirmDialog thay vì window.confirm()
   const handleDeleteRequest = (id) => {
     setDeletingId(id);
     setConfirmOpen(true);
   };
 
-  // Bước 2: Người dùng xác nhận → thực hiện xóa
   const handleDeleteConfirm = async () => {
     try {
       await deleteFood(deletingId);
@@ -90,12 +113,7 @@ export default function DashboardPage() {
     }
   };
 
-  const handleDeleteCancel = () => {
-    setConfirmOpen(false);
-    setDeletingId(null);
-  };
-
-  const openAdd = () => { setEditingFood(null); setModalOpen(true); };
+  const openAdd  = () => { setEditingFood(null); setModalOpen(true); };
   const openEdit = (food) => { setEditingFood(food); setModalOpen(true); };
 
   if (authLoading || !user) {
@@ -114,38 +132,52 @@ export default function DashboardPage() {
         {/* Greeting */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold">
-            Xin chào, <span className="gradient-text">{user.name}</span> 
+            Xin chào, <span className="gradient-text">{user.name}</span>
           </h1>
           <p className="text-white/50 mt-1">Theo dõi thực phẩm của bạn để tránh lãng phí</p>
         </div>
 
-        {/* Stats */}
+        {/* Stats cards */}
         <StatsCards stats={stats} />
 
-        {/* Filter */}
+        {/* Category chart */}
+        <CategoryChart data={categoryStats} />
+
+        {/* Filter (search + sort + status + category) */}
         <FoodFilter
           search={search}
           status={status}
+          category={category}
+          sort={sort}
           onSearch={setSearch}
-          onStatus={(s) => { setStatus(s); fetchFoods({ status: s, search }); }}
+          onStatus={(s) => setStatus(s)}
+          onCategory={(c) => setCategory(c)}
+          onSort={(s) => setSort(s)}
         />
 
-        {/* Loading */}
+        {/* Food list */}
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : foods.length === 0 ? (
-          /* Empty state */
           <div className="glass flex flex-col items-center justify-center py-20 text-center">
             <PackageOpen className="w-16 h-16 text-white/20 mb-4" />
-            <p className="text-white/40 text-lg font-medium">Chưa có thực phẩm nào</p>
-            <p className="text-white/30 text-sm mt-1">Nhấn nút + để thêm thực phẩm đầu tiên</p>
-            <button onClick={openAdd}
-              className="mt-6 px-6 py-2.5 rounded-xl font-medium text-sm cursor-pointer transition-opacity hover:opacity-80"
-              style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}>
-              Thêm thực phẩm
-            </button>
+            <p className="text-white/40 text-lg font-medium">
+              {search || status || category ? "Không tìm thấy thực phẩm nào" : "Chưa có thực phẩm nào"}
+            </p>
+            <p className="text-white/30 text-sm mt-1">
+              {search || status || category ? "Thử thay đổi bộ lọc của bạn" : "Nhấn nút + để thêm thực phẩm đầu tiên"}
+            </p>
+            {!search && !status && !category && (
+              <button
+                onClick={openAdd}
+                className="mt-6 px-6 py-2.5 rounded-xl font-medium text-sm cursor-pointer transition-opacity hover:opacity-80"
+                style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)" }}
+              >
+                Thêm thực phẩm
+              </button>
+            )}
           </div>
         ) : (
           <>
@@ -165,7 +197,10 @@ export default function DashboardPage() {
             {pagination.totalPages > 1 && (
               <div className="flex justify-center items-center gap-3 mt-8">
                 <button
-                  onClick={() => fetchFoods({ status, search, page: pagination.page - 1 })}
+                  onClick={() => {
+                    const { sortBy, sortOrder } = parsedSort();
+                    fetchFoods({ status, search, category, sortBy, sortOrder, page: pagination.page - 1 });
+                  }}
                   disabled={pagination.page === 1}
                   className="px-4 py-2 glass rounded-lg text-sm disabled:opacity-30 hover:bg-white/10 transition-colors cursor-pointer"
                 >
@@ -175,7 +210,10 @@ export default function DashboardPage() {
                   {pagination.page} / {pagination.totalPages}
                 </span>
                 <button
-                  onClick={() => fetchFoods({ status, search, page: pagination.page + 1 })}
+                  onClick={() => {
+                    const { sortBy, sortOrder } = parsedSort();
+                    fetchFoods({ status, search, category, sortBy, sortOrder, page: pagination.page + 1 });
+                  }}
                   disabled={pagination.page === pagination.totalPages}
                   className="px-4 py-2 glass rounded-lg text-sm disabled:opacity-30 hover:bg-white/10 transition-colors cursor-pointer"
                 >
@@ -187,7 +225,7 @@ export default function DashboardPage() {
         )}
       </main>
 
-      {/* FAB — Floating Action Button */}
+      {/* FAB */}
       <button
         onClick={openAdd}
         disabled={saving}
@@ -197,7 +235,7 @@ export default function DashboardPage() {
         <Plus className="w-6 h-6 text-white" />
       </button>
 
-      {/* Modal thêm / sửa */}
+      {/* Food Modal */}
       <FoodModal
         isOpen={modalOpen}
         food={editingFood}
@@ -205,7 +243,7 @@ export default function DashboardPage() {
         onSave={handleSave}
       />
 
-      {/* ConfirmDialog xóa */}
+      {/* Confirm Delete Dialog */}
       <ConfirmDialog
         isOpen={confirmOpen}
         title="Xóa thực phẩm"
@@ -213,7 +251,7 @@ export default function DashboardPage() {
         confirmText="Xóa"
         cancelText="Giữ lại"
         onConfirm={handleDeleteConfirm}
-        onCancel={handleDeleteCancel}
+        onCancel={() => { setConfirmOpen(false); setDeletingId(null); }}
         loading={deleting}
         variant="danger"
       />

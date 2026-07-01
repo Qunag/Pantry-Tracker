@@ -2,111 +2,68 @@
 
 const cron = require("node-cron");
 const prisma = require("../config/db");
+const logger = require("../config/logger");
 const { sendExpiryEmail } = require("../utils/mailer");
 
 const startExpiryCron = () => {
   // Chạy lúc 7:00 sáng mỗi ngày
   cron.schedule("0 7 * * *", async () => {
-    console.log("\n⏰ [CRON] Checking expiry foods...");
-
+    logger.info("[CRON] Checking expiry foods...");
     try {
-      // 1. Tìm tất cả foods hết hạn trong 3 ngày tới
-      const threeDaysFromNow = new Date();
-      threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
-
-      const expiringFoods = await prisma.food.findMany({
-        where: {
-          expiryDate: { lte: threeDaysFromNow },
-        },
-        include: {
-          user: { select: { id: true, email: true, name: true } },
-        },
-        orderBy: { expiryDate: "asc" },
-      });
-
-      if (expiringFoods.length === 0) {
-        console.log("   ✅ No expiring foods found.");
-        return;
-      }
-
-      // 2. Group theo userId
-      const grouped = {};
-      for (const food of expiringFoods) {
-        const userId = food.userId;
-        if (!grouped[userId]) {
-          grouped[userId] = {
-            user: food.user,
-            foods: [],
-          };
-        }
-        grouped[userId].foods.push(food);
-      }
-
-      // 3. Gửi 1 email tổng hợp cho mỗi user
-      const userIds = Object.keys(grouped);
-      console.log(`   📋 Found ${expiringFoods.length} items for ${userIds.length} user(s)`);
-
-      for (const userId of userIds) {
-        const { user, foods } = grouped[userId];
-        try {
-          await sendExpiryEmail(user.email, user.name, foods);
-          console.log(`   ✅ Email sent to ${user.email} (${foods.length} items)`);
-        } catch (err) {
-          console.error(`   ❌ Failed to send email to ${user.email}:`, err.message);
-        }
-      }
-
-      console.log("⏰ [CRON] Done.\n");
+      await _runExpiryCheck();
+      logger.info("[CRON] Done.");
     } catch (err) {
-      console.error("❌ [CRON] Error:", err.message);
+      logger.error("[CRON] Unexpected error", { error: err.message, stack: err.stack });
     }
   });
 
-  console.log("⏰ Cron job scheduled: daily at 7:00 AM");
+  logger.info("Cron job scheduled: daily at 7:00 AM");
 };
 
-// Chạy thủ công để test (không cần chờ 7h sáng)
-const runManually = async () => {
-  console.log("\n🔧 [MANUAL] Running expiry check...");
-
+// Tách logic ra hàm riêng để tái dụng + test
+const _runExpiryCheck = async () => {
   const threeDaysFromNow = new Date();
   threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
 
   const expiringFoods = await prisma.food.findMany({
-    where: {
-      expiryDate: { lte: threeDaysFromNow },
-    },
-    include: {
-      user: { select: { id: true, email: true, name: true } },
-    },
+    where: { expiryDate: { lte: threeDaysFromNow } },
+    include: { user: { select: { id: true, email: true, name: true } } },
     orderBy: { expiryDate: "asc" },
   });
 
   if (expiringFoods.length === 0) {
-    console.log("   ✅ No expiring foods found.");
+    logger.info("[CRON] No expiring foods found.");
     return;
   }
 
+  // Group theo userId
   const grouped = {};
   for (const food of expiringFoods) {
-    const userId = food.userId;
-    if (!grouped[userId]) {
-      grouped[userId] = { user: food.user, foods: [] };
+    if (!grouped[food.userId]) {
+      grouped[food.userId] = { user: food.user, foods: [] };
     }
-    grouped[userId].foods.push(food);
+    grouped[food.userId].foods.push(food);
   }
 
-  for (const userId of Object.keys(grouped)) {
+  const userIds = Object.keys(grouped);
+  logger.info(`[CRON] Found ${expiringFoods.length} items for ${userIds.length} user(s)`);
+
+  for (const userId of userIds) {
     const { user, foods } = grouped[userId];
     try {
       await sendExpiryEmail(user.email, user.name, foods);
-      console.log(`   ✅ Email sent to ${user.email} (${foods.length} items)`);
+      logger.info(`[CRON] Email sent to ${user.email}`, { count: foods.length });
     } catch (err) {
-      console.error(`   ❌ Failed: ${err.message}`);
+      logger.error(`[CRON] Failed to send email to ${user.email}`, { error: err.message });
     }
   }
+};
 
-  console.log("🔧 [MANUAL] Done.\n");
+// Chạy thủ công để test (không cần chờ 7h sáng)
+const runManually = async () => {
+  logger.info("[MANUAL] Running expiry check...");
+  await _runExpiryCheck();
+  logger.info("[MANUAL] Done.");
 };
 
 module.exports = { startExpiryCron, runManually };

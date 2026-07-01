@@ -1,6 +1,7 @@
 "use client";
 // src/components/food/FoodCard.jsx
 import { Calendar, Package, Pencil, Trash2 } from "lucide-react";
+import { CATEGORIES } from "./FoodModal";
 
 const STATUS_CONFIG = {
   safe:    { label: "An toàn",   borderColor: "#22c55e", badgeClass: "badge-safe"    },
@@ -10,6 +11,8 @@ const STATUS_CONFIG = {
 
 export default function FoodCard({ food, onEdit, onDelete, isDeleting }) {
   const cfg = STATUS_CONFIG[food.status] || STATUS_CONFIG.safe;
+
+  const categoryInfo = CATEGORIES.find((c) => c.value === food.category) || CATEGORIES.at(-1);
 
   const formatDate = (d) =>
     new Date(d).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -26,7 +29,10 @@ export default function FoodCard({ food, onEdit, onDelete, isDeleting }) {
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
-        <h3 className="font-semibold text-white leading-snug line-clamp-2">{food.name}</h3>
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-lg shrink-0" title={categoryInfo.label}>{categoryInfo.emoji}</span>
+          <h3 className="font-semibold text-white leading-snug line-clamp-2">{food.name}</h3>
+        </div>
         <span className={`shrink-0 text-xs px-2.5 py-1 rounded-full font-medium ${cfg.badgeClass} ${food.status === "warning" ? "animate-pulse-warning" : ""}`}>
           {cfg.label}
         </span>
@@ -35,11 +41,11 @@ export default function FoodCard({ food, onEdit, onDelete, isDeleting }) {
       {/* Info */}
       <div className="flex flex-col gap-1.5 text-sm text-white/60">
         <div className="flex items-center gap-2">
-          <Package className="w-3.5 h-3.5" />
+          <Package className="w-3.5 h-3.5 shrink-0" />
           <span>{food.quantity}{food.unit ? ` ${food.unit}` : ""}</span>
         </div>
         <div className="flex items-center gap-2">
-          <Calendar className="w-3.5 h-3.5" />
+          <Calendar className="w-3.5 h-3.5 shrink-0" />
           <span>{formatDate(food.expiryDate)}</span>
         </div>
       </div>

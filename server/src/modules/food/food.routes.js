@@ -40,6 +40,34 @@ router.get("/stats", foodController.getStats);
 
 /**
  * @swagger
+ * /api/foods/expiring:
+ *   get:
+ *     summary: Lấy danh sách thực phẩm sắp hết hạn trong 7 ngày (dùng cho Notification Bell)
+ *     tags: [Foods]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Danh sách thực phẩm sắp hết hạn
+ */
+router.get("/expiring", foodController.getExpiring);
+
+/**
+ * @swagger
+ * /api/foods/stats/category:
+ *   get:
+ *     summary: Thống kê số lượng thực phẩm theo category
+ *     tags: [Foods]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Thống kê theo category
+ */
+router.get("/stats/category", foodController.getCategoryStats);
+
+/**
+ * @swagger
  * /api/foods:
  *   get:
  *     summary: Lấy danh sách thực phẩm (có thể filter và phân trang)

@@ -3,7 +3,17 @@
 import { useState, useEffect } from "react";
 import { X, Save } from "lucide-react";
 
-const EMPTY = { name: "", quantity: 1, unit: "", expiryDate: "", barcode: "" };
+const EMPTY = { name: "", category: "other", quantity: 1, unit: "", expiryDate: "", barcode: "" };
+
+export const CATEGORIES = [
+  { value: "vegetable", label: "Rau củ",       emoji: "🥦" },
+  { value: "meat",      label: "Thịt & Hải sản", emoji: "🥩" },
+  { value: "frozen",    label: "Đồ đông lạnh",  emoji: "🧊" },
+  { value: "dairy",     label: "Sữa & Trứng",   emoji: "🥛" },
+  { value: "dry",       label: "Đồ khô",        emoji: "🌾" },
+  { value: "drink",     label: "Nước uống",      emoji: "🧃" },
+  { value: "other",     label: "Khác",           emoji: "📦" },
+];
 
 export default function FoodModal({ isOpen, food, onClose, onSave }) {
   const [form, setForm] = useState(EMPTY);
@@ -13,6 +23,7 @@ export default function FoodModal({ isOpen, food, onClose, onSave }) {
     if (food) {
       setForm({
         name:       food.name       || "",
+        category:   food.category   || "other",
         quantity:   food.quantity   || 1,
         unit:       food.unit       || "",
         barcode:    food.barcode    || "",
@@ -42,7 +53,10 @@ export default function FoodModal({ isOpen, food, onClose, onSave }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}
+    >
       <div className="glass w-full max-w-md p-6 animate-fade-in">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -53,12 +67,37 @@ export default function FoodModal({ isOpen, food, onClose, onSave }) {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Tên */}
           <div>
             <label className="text-sm text-white/60 mb-1.5 block">Tên thực phẩm *</label>
             <input name="name" value={form.name} onChange={handleChange}
               className="input-dark" placeholder="VD: Sữa tươi TH" required />
           </div>
 
+          {/* Category */}
+          <div>
+            <label className="text-sm text-white/60 mb-1.5 block">Danh mục</label>
+            <div className="grid grid-cols-4 gap-2">
+              {CATEGORIES.map((cat) => (
+                <button
+                  key={cat.value}
+                  type="button"
+                  onClick={() => setForm((f) => ({ ...f, category: cat.value }))}
+                  className="flex flex-col items-center gap-1 p-2 rounded-xl text-xs transition-all duration-200 cursor-pointer border"
+                  style={
+                    form.category === cat.value
+                      ? { background: "rgba(99,102,241,0.25)", borderColor: "#6366f1", color: "#a5b4fc" }
+                      : { background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.5)" }
+                  }
+                >
+                  <span className="text-lg">{cat.emoji}</span>
+                  <span className="leading-tight text-center">{cat.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Số lượng + Đơn vị */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-sm text-white/60 mb-1.5 block">Số lượng</label>
@@ -72,20 +111,21 @@ export default function FoodModal({ isOpen, food, onClose, onSave }) {
             </div>
           </div>
 
+          {/* Hạn sử dụng */}
           <div>
             <label className="text-sm text-white/60 mb-1.5 block">Hạn sử dụng *</label>
             <input name="expiryDate" type="date" value={form.expiryDate} onChange={handleChange}
-              className="input-dark" required
-              style={{ colorScheme: "dark" }}
-            />
+              className="input-dark" required style={{ colorScheme: "dark" }} />
           </div>
 
+          {/* Barcode */}
           <div>
             <label className="text-sm text-white/60 mb-1.5 block">Barcode (tùy chọn)</label>
             <input name="barcode" value={form.barcode} onChange={handleChange}
               className="input-dark" placeholder="8934563118037" />
           </div>
 
+          {/* Buttons */}
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose}
               className="flex-1 py-2.5 rounded-xl text-white/60 hover:text-white transition-colors cursor-pointer"

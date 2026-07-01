@@ -4,9 +4,11 @@ require("dotenv/config");
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
+const morgan = require("morgan");
 const rateLimit = require("express-rate-limit");
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("./config/swagger");
+const logger = require("./config/logger");
 const errorHandler = require("./middlewares/error.middleware");
 const authRoutes = require("./modules/auth/auth.routes");
 const foodRoutes = require("./modules/food/food.routes");
@@ -38,6 +40,9 @@ const authLimiter = rateLimit({
 app.use(globalLimiter);
 
 // --- Global Middleware ---
+// HTTP request logger (Morgan → Winston stream)
+const morganStream = { write: (msg) => logger.http(msg.trim()) };
+app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev", { stream: morganStream }));
 app.use(express.json());
 
 // --- Swagger UI ---
